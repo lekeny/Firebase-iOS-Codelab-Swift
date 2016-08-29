@@ -123,10 +123,11 @@ UITextFieldDelegate, UIImagePickerControllerDelegate, UINavigationControllerDele
     }
     
     @IBAction func didPressCrash(sender: AnyObject) {
-        fatalError()
+        FIRCrashMessage("Cause Crash button clicked")
     }
     
     func logViewLoaded() {
+        FIRCrashMessage("View loaded")
     }
     
     func loadAd() {
