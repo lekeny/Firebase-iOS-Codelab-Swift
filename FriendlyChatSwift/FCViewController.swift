@@ -140,6 +140,8 @@ UITextFieldDelegate, UIImagePickerControllerDelegate, UINavigationControllerDele
         if let photoUrl = AppState.sharedInstance.photoUrl {
             mdata[Constants.MessageFields.photoUrl] = photoUrl.absoluteString
         }
+        // Push data to Firebase Database
+        self.ref.child("messages").childByAutoId().setValue(mdata)
     }
     
     // MARK: - Image Picker
