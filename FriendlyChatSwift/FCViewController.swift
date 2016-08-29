@@ -29,141 +29,157 @@ let kBannerAdUnitID = "ca-app-pub-3940256099942544/2934735716"
 
 @objc(FCViewController)
 class FCViewController: UIViewController, UITableViewDataSource, UITableViewDelegate,
-    UITextFieldDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-
-  // Instance variables
-  @IBOutlet weak var textField: UITextField!
-  @IBOutlet weak var sendButton: UIButton!
-  var ref: FIRDatabaseReference!
-  var messages: [FIRDataSnapshot]! = []
-  var msglength: NSNumber = 10
-  private var _refHandle: FIRDatabaseHandle!
-
-  var storageRef: FIRStorageReference!
-  var remoteConfig: FIRRemoteConfig!
-
-  @IBOutlet weak var banner: GADBannerView!
-  @IBOutlet weak var clientTable: UITableView!
-
-
-  override func viewDidLoad() {
-    super.viewDidLoad()
-
-    self.clientTable.registerClass(UITableViewCell.self, forCellReuseIdentifier: "tableViewCell")
-
-    configureDatabase()
-    configureStorage()
-    configureRemoteConfig()
-    fetchConfig()
-    loadAd()
-    logViewLoaded()
-  }
-
-  deinit {
-  }
-
-  func configureDatabase() {
-  }
-
-  func configureStorage() {
-  }
-
-  func configureRemoteConfig() {
-  }
-
-  func fetchConfig() {
-  }
-
-  @IBAction func didPressFreshConfig(sender: AnyObject) {
-    fetchConfig()
-  }
-
-  @IBAction func didSendMessage(sender: UIButton) {
-    textFieldShouldReturn(textField)
-  }
-
-  @IBAction func didPressCrash(sender: AnyObject) {
-    fatalError()
-  }
-
-  func logViewLoaded() {
-  }
-
-  func loadAd() {
-  }
-
-  func textField(textField: UITextField, shouldChangeCharactersInRange range: NSRange, replacementString string: String) -> Bool {
-    guard let text = textField.text else { return true }
-
-    let newLength = text.utf16.count + string.utf16.count - range.length
-    return newLength <= self.msglength.integerValue // Bool
-  }
-
-  // UITableViewDataSource protocol methods
-  func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-    return messages.count
-  }
-
-  func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
-    // Dequeue cell
-    let cell: UITableViewCell! = self.clientTable.dequeueReusableCellWithIdentifier("tableViewCell", forIndexPath: indexPath)
-
-    return cell!
-  }
-
-  // UITextViewDelegate protocol methods
-  func textFieldShouldReturn(textField: UITextField) -> Bool {
-    let data = [Constants.MessageFields.text: textField.text! as String]
-    sendMessage(data)
-    return true
-  }
-
-  func sendMessage(data: [String: String]) {
-    var mdata = data
-    mdata[Constants.MessageFields.name] = AppState.sharedInstance.displayName
-    if let photoUrl = AppState.sharedInstance.photoUrl {
-      mdata[Constants.MessageFields.photoUrl] = photoUrl.absoluteString
+UITextFieldDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+    
+    // Instance variables
+    @IBOutlet weak var textField: UITextField!
+    @IBOutlet weak var sendButton: UIButton!
+    var ref: FIRDatabaseReference!
+    var messages: [FIRDataSnapshot]! = []
+    var msglength: NSNumber = 10
+    private var _refHandle: FIRDatabaseHandle!
+    
+    var storageRef: FIRStorageReference!
+    var remoteConfig: FIRRemoteConfig!
+    
+    @IBOutlet weak var banner: GADBannerView!
+    @IBOutlet weak var clientTable: UITableView!
+    
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        self.clientTable.registerClass(UITableViewCell.self, forCellReuseIdentifier: "tableViewCell")
+        
+        configureDatabase()
+        configureStorage()
+        configureRemoteConfig()
+        fetchConfig()
+        loadAd()
+        logViewLoaded()
     }
-  }
-
-  // MARK: - Image Picker
-
-  @IBAction func didTapAddPhoto(sender: AnyObject) {
-    let picker = UIImagePickerController()
-    picker.delegate = self
-    if (UIImagePickerController.isSourceTypeAvailable(UIImagePickerControllerSourceType.Camera)) {
-      picker.sourceType = UIImagePickerControllerSourceType.Camera
-    } else {
-      picker.sourceType = UIImagePickerControllerSourceType.PhotoLibrary
+    
+    deinit {
+        self.ref.child("messages").removeObserverWithHandle(_refHandle)
     }
-
-    presentViewController(picker, animated: true, completion:nil)
-  }
-
-  func imagePickerController(picker: UIImagePickerController,
-    didFinishPickingMediaWithInfo info: [String : AnyObject]) {
-      picker.dismissViewControllerAnimated(true, completion:nil)
-
-    // if it's a photo from the library, not an image from the camera
-    if #available(iOS 8.0, *), let referenceUrl = info[UIImagePickerControllerReferenceURL] {
-      let assets = PHAsset.fetchAssetsWithALAssetURLs([referenceUrl as! NSURL], options: nil)
-      let asset = assets.firstObject
-      asset?.requestContentEditingInputWithOptions(nil, completionHandler: { (contentEditingInput, info) in
-        let imageFile = contentEditingInput?.fullSizeImageURL
-        let filePath = "\(FIRAuth.auth()?.currentUser?.uid)/\(Int(NSDate.timeIntervalSinceReferenceDate() * 1000))/\(referenceUrl.lastPathComponent!)"
-      })
-    } else {
-      let image = info[UIImagePickerControllerOriginalImage] as! UIImage
-      let imageData = UIImageJPEGRepresentation(image, 0.8)
-      let imagePath = FIRAuth.auth()!.currentUser!.uid +
-        "/\(Int(NSDate.timeIntervalSinceReferenceDate() * 1000)).jpg"
+    
+    func configureDatabase() {
+        ref = FIRDatabase.database().reference()
+        // Listen for new messages in the Firebase database
+        _refHandle = self.ref.child("messages").observeEventType(.ChildAdded, withBlock: { (snapshot) -> Void in
+            self.messages.append(snapshot)
+            self.clientTable.insertRowsAtIndexPaths([NSIndexPath(forRow: self.messages.count-1, inSection: 0)], withRowAnimation: .Automatic)
+        })
     }
-  }
-
-  func imagePickerControllerDidCancel(picker: UIImagePickerController) {
-    picker.dismissViewControllerAnimated(true, completion:nil)
-  }
-
+    
+    func configureStorage() {
+    }
+    
+    func configureRemoteConfig() {
+    }
+    
+    func fetchConfig() {
+    }
+    
+    @IBAction func didPressFreshConfig(sender: AnyObject) {
+        fetchConfig()
+    }
+    
+    @IBAction func didSendMessage(sender: UIButton) {
+        textFieldShouldReturn(textField)
+    }
+    
+    @IBAction func didPressCrash(sender: AnyObject) {
+        fatalError()
+    }
+    
+    func logViewLoaded() {
+    }
+    
+    func loadAd() {
+    }
+    
+    func textField(textField: UITextField, shouldChangeCharactersInRange range: NSRange, replacementString string: String) -> Bool {
+        guard let text = textField.text else { return true }
+        
+        let newLength = text.utf16.count + string.utf16.count - range.length
+        return newLength <= self.msglength.integerValue // Bool
+    }
+    
+    // UITableViewDataSource protocol methods
+    func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return messages.count
+    }
+    
+    func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
+        // Dequeue cell
+        let cell: UITableViewCell! = self.clientTable .dequeueReusableCellWithIdentifier("tableViewCell", forIndexPath: indexPath)
+        // Unpack message from Firebase DataSnapshot
+        let messageSnapshot: FIRDataSnapshot! = self.messages[indexPath.row]
+        let message = messageSnapshot.value as! Dictionary<String, String>
+        let name = message[Constants.MessageFields.name] as String!
+        let text = message[Constants.MessageFields.text] as String!
+        cell!.textLabel?.text = name + ": " + text
+        cell!.imageView?.image = UIImage(named: "ic_account_circle")
+        if let photoUrl = message[Constants.MessageFields.photoUrl], url = NSURL(string:photoUrl), data = NSData(contentsOfURL: url) {
+            cell!.imageView?.image = UIImage(data: data)
+        }
+        return cell!
+    }
+    
+    // UITextViewDelegate protocol methods
+    func textFieldShouldReturn(textField: UITextField) -> Bool {
+        let data = [Constants.MessageFields.text: textField.text! as String]
+        sendMessage(data)
+        return true
+    }
+    
+    func sendMessage(data: [String: String]) {
+        var mdata = data
+        mdata[Constants.MessageFields.name] = AppState.sharedInstance.displayName
+        if let photoUrl = AppState.sharedInstance.photoUrl {
+            mdata[Constants.MessageFields.photoUrl] = photoUrl.absoluteString
+        }
+    }
+    
+    // MARK: - Image Picker
+    
+    @IBAction func didTapAddPhoto(sender: AnyObject) {
+        let picker = UIImagePickerController()
+        picker.delegate = self
+        if (UIImagePickerController.isSourceTypeAvailable(UIImagePickerControllerSourceType.Camera)) {
+            picker.sourceType = UIImagePickerControllerSourceType.Camera
+        } else {
+            picker.sourceType = UIImagePickerControllerSourceType.PhotoLibrary
+        }
+        
+        presentViewController(picker, animated: true, completion:nil)
+    }
+    
+    func imagePickerController(picker: UIImagePickerController,
+                               didFinishPickingMediaWithInfo info: [String : AnyObject]) {
+        picker.dismissViewControllerAnimated(true, completion:nil)
+        
+        // if it's a photo from the library, not an image from the camera
+        if #available(iOS 8.0, *), let referenceUrl = info[UIImagePickerControllerReferenceURL] {
+            let assets = PHAsset.fetchAssetsWithALAssetURLs([referenceUrl as! NSURL], options: nil)
+            let asset = assets.firstObject
+            asset?.requestContentEditingInputWithOptions(nil, completionHandler: { (contentEditingInput, info) in
+                let imageFile = contentEditingInput?.fullSizeImageURL
+                let filePath = "\(FIRAuth.auth()?.currentUser?.uid)/\(Int(NSDate.timeIntervalSinceReferenceDate() * 1000))/\(referenceUrl.lastPathComponent!)"
+            })
+        } else {
+            let image = info[UIImagePickerControllerOriginalImage] as! UIImage
+            let imageData = UIImageJPEGRepresentation(image, 0.8)
+            let imagePath = FIRAuth.auth()!.currentUser!.uid +
+                "/\(Int(NSDate.timeIntervalSinceReferenceDate() * 1000)).jpg"
+        }
+    }
+    
+    func imagePickerControllerDidCancel(picker: UIImagePickerController) {
+        picker.dismissViewControllerAnimated(true, completion:nil)
+    }
+    
     @IBAction func signOut(sender: UIButton) {
         let firebaseAuth = FIRAuth.auth()
         do {
@@ -174,15 +190,15 @@ class FCViewController: UIViewController, UITableViewDataSource, UITableViewDele
             print ("Error signing out: \(signOutError)")
         }
     }
-
-  func showAlert(title:String, message:String) {
-    dispatch_async(dispatch_get_main_queue()) {
-        let alert = UIAlertController(title: title,
-            message: message, preferredStyle: .Alert)
-        let dismissAction = UIAlertAction(title: "Dismiss", style: .Destructive, handler: nil)
-        alert.addAction(dismissAction)
-        self.presentViewController(alert, animated: true, completion: nil)
+    
+    func showAlert(title:String, message:String) {
+        dispatch_async(dispatch_get_main_queue()) {
+            let alert = UIAlertController(title: title,
+                                          message: message, preferredStyle: .Alert)
+            let dismissAction = UIAlertAction(title: "Dismiss", style: .Destructive, handler: nil)
+            alert.addAction(dismissAction)
+            self.presentViewController(alert, animated: true, completion: nil)
+        }
     }
-  }
-
+    
 }
