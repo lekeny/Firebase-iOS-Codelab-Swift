@@ -57,7 +57,11 @@ UITextFieldDelegate, UIImagePickerControllerDelegate, UINavigationControllerDele
         fetchConfig()
         loadAd()
         logViewLoaded()
+        self.hideKeyboardWhenTappedAround() 
     }
+    
+    
+    
     
     deinit {
         self.ref.child("messages").removeObserverWithHandle(_refHandle)
@@ -273,4 +277,16 @@ UITextFieldDelegate, UIImagePickerControllerDelegate, UINavigationControllerDele
         }
     }
     
+}
+
+// Function to hide keyboard when touching anywhere else
+extension UIViewController {
+    func hideKeyboardWhenTappedAround() {
+        let tap: UITapGestureRecognizer = UITapGestureRecognizer(target: self, action: "dismissKeyboard")
+        view.addGestureRecognizer(tap)
+    }
+    
+    func dismissKeyboard() {
+        view.endEditing(true)
+    }
 }

@@ -28,6 +28,7 @@ class SignInViewController: UIViewController {
         if let user = FIRAuth.auth()?.currentUser {
             self.signedIn(user)
         }
+        self.hideKeyboardWhenTappedAround() 
     }
     
     @IBAction func didTapSignIn(sender: AnyObject) {
