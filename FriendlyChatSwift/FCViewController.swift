@@ -77,9 +77,41 @@ UITextFieldDelegate, UIImagePickerControllerDelegate, UINavigationControllerDele
     }
     
     func configureRemoteConfig() {
+        remoteConfig = FIRRemoteConfig.remoteConfig()
+        // Create Remote Config Setting to enable developer mode.
+        // Fetching configs from the server is normally limited to 5 requests per hour.
+        // Enabling developer mode allows many more requests to be made per hour, so developers
+        // can test different config values during development.
+        let remoteConfigSettings = FIRRemoteConfigSettings(developerModeEnabled: true)
+        remoteConfig.configSettings = remoteConfigSettings!
     }
     
     func fetchConfig() {
+        var expirationDuration: Double = 3600
+        // If in developer mode cacheExpiration is set to 0 so each fetch will retrieve values from
+        // the server.
+        if (self.remoteConfig.configSettings.isDeveloperModeEnabled) {
+            expirationDuration = 0
+        }
+        
+        // cacheExpirationSeconds is set to cacheExpiration here, indicating that any previously
+        // fetched and cached config would be considered expired because it would have been fetched
+        // more than cacheExpiration seconds ago. Thus the next fetch would go to the server unless
+        // throttling is in progress. The default expiration duration is 43200 (12 hours).
+        remoteConfig.fetchWithExpirationDuration(expirationDuration) { (status, error) in
+            if (status == .Success) {
+                print("Config fetched!")
+                self.remoteConfig.activateFetched()
+                let friendlyMsgLength = self.remoteConfig["friendly_msg_length"]
+                if (friendlyMsgLength.source != .Static) {
+                    self.msglength = friendlyMsgLength.numberValue!
+                    print("Friendly msg length config: \(self.msglength)")
+                }
+            } else {
+                print("Config not fetched")
+                print("Error \(error)")
+            }
+        }
     }
     
     @IBAction func didPressFreshConfig(sender: AnyObject) {
