@@ -130,6 +130,9 @@ UITextFieldDelegate, UIImagePickerControllerDelegate, UINavigationControllerDele
     }
     
     func loadAd() {
+        self.banner.adUnitID = kBannerAdUnitID
+        self.banner.rootViewController = self
+        self.banner.loadRequest(GADRequest())
     }
     
     func textField(textField: UITextField, shouldChangeCharactersInRange range: NSRange, replacementString string: String) -> Bool {
